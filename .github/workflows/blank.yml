@@ -1,0 +1,43 @@
+name: Build Xray
+on: 
+  workflow_dispatch: #手动触发工作流
+   inputs:
+    tag:
+        description: '仓库标签（通常标签为版本号）'
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 签出目标仓库
+        uses: actions/checkout@v3
+        with:
+         repository: XTLS/Xray-core
+         ref: ${{ inputs.tag }}
+      - name: 设置go环境
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod' #提取go版本
+      - name: 编译Xray
+        run: go build -o xray -trimpath -ldflags "-s -w -buildid=" ./main
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.tag }}
+          release_name: ${{ inputs.tag }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./xray
+          asset_name: xray
+          asset_content_type: application/*
